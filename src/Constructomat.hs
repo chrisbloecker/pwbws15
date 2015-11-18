@@ -1,36 +1,42 @@
 module Constructomat
+  (module Constructomat)
   where
 
 --------------------------------------------------------------------------------
-import Model
+import Model as Constructomat
 --------------------------------------------------------------------------------
 
-newtype Constructomat = Constructomat { unConstructomat :: Availabilities }
+data Constructomat = Constructomat { amounts     :: Amounts
+                                   , transitions :: [PlanId]
+                                   }
   deriving (Show)
+
+instance Eq Constructomat where
+  c1 == c2 = amounts c1 == amounts c2
 
 type Instruction = Constructomat -> Maybe Constructomat
 
 --------------------------------------------------------------------------------
 
 worth :: Prices -> (Constructomat -> Price)
-worth = \ps -> sum . zipWith (*) ps . unConstructomat
+worth = \ps -> sum . zipWith (*) ps . amounts
 
 
-mkInstruction :: Int -> Plan -> Instruction
-mkInstruction n (ins, outs, liquid) =
+mkInstruction :: Int -> PlanId -> Plan -> Instruction
+mkInstruction n pid (ins, outs, liquid) =
   let inAmounts  = counts n ins  ++ [liquid]
       outAmounts = counts n outs ++ [0]
       delta     = zipWith (-) outAmounts inAmounts
-  in \c -> if all id (zipWith (>=) (unConstructomat c) inAmounts)
-             then Just $ Constructomat (zipWith (+) (unConstructomat c) delta)
+  in \c -> if all id (zipWith (>=) (amounts c) inAmounts)
+             then Just $ Constructomat (zipWith (+) (amounts c) delta) (transitions c ++ [pid])
              else Nothing
 
 
-counts :: Int -> Products -> Availabilities
+counts :: Int -> Products -> Amounts
 counts n ps = foldr (zipWith (+)) zeros (map singleton ps)
   where
-    singleton :: Product -> Availabilities
+    singleton :: Product -> Amounts
     singleton p = replicate p 0 ++ [1] ++ replicate (n-p-1) 0
 
-    zeros :: Availabilities
+    zeros :: Amounts
     zeros = replicate n 0

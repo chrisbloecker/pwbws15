@@ -2,19 +2,20 @@ module Main
   where
 
 --------------------------------------------------------------------------------
-import Control.Applicative ((<$>))
+import Prelude             hiding (iterate)
 --------------------------------------------------------------------------------
 import Constructomat
-import Model
+import Search
 --------------------------------------------------------------------------------
 
 main :: IO ()
 main = do
-  putStrLn "[INFO ] Running the awesomely awesome Constructomat!"
+  prices  <- (read :: String -> Prices)  <$> getLine
+  amounts <- (read :: String -> Amounts) <$> getLine
+  plans   <- (read :: String -> Plans)   <$> getLine
+  liquid  <- (read :: String -> Amount)  <$> getLine
 
-  prices       <- (read :: String -> Prices)         <$> getLine
-  availability <- (read :: String -> Availabilities) <$> getLine
-  plans        <- (read :: String -> Plans)          <$> getLine
-  liquid       <- (read :: String -> Availability)   <$> getLine
+  let constructomat = Constructomat (amounts ++ [liquid]) []
+      search = Search [constructomat] (worth prices) (map (uncurry $ mkInstruction (length amounts)) (zip [0..] plans))
 
-  print (worth prices (Constructomat (availability ++ [liquid])))
+  print . reverse . transitions . best . iterate $ search
