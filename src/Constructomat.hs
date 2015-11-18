@@ -19,7 +19,11 @@ type Instruction = Constructomat -> Maybe Constructomat
 --------------------------------------------------------------------------------
 
 worth :: Prices -> (Constructomat -> Price)
-worth = \ps -> sum . zipWith (*) ps . amounts
+worth = \ps -> sum . map penalty . zipWith (*) ps . amounts
+  where
+    penalty :: Price -> Price
+    penalty x | x < 0     = -(x*x)
+              | otherwise = x
 
 
 mkInstruction :: Int -> PlanId -> Plan -> Instruction
