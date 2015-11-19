@@ -16,6 +16,6 @@ main = do
   liquid  <- (read :: String -> Amount)  <$> getLine
 
   let constructomat = Constructomat (amounts ++ [liquid]) []
-      search = Search [constructomat] (worth prices) (map (uncurry $ mkInstruction (length amounts)) (zip [0..] plans))
+      search = Search [constructomat] [] (worth prices) (map (uncurry $ mkInstruction (length amounts)) (zip [0..] plans))
 
   print . reverse . transitions . best . iterate $ search
