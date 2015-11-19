@@ -2,7 +2,8 @@ module Main
   where
 
 --------------------------------------------------------------------------------
-import Prelude             hiding (iterate)
+import Prelude                     hiding (iterate)
+import Control.Parallel.Strategies        (parMap, rpar)
 --------------------------------------------------------------------------------
 import Constructomat
 import Search
@@ -16,6 +17,6 @@ main = do
   liquid  <- (read :: String -> Amount)  <$> getLine
 
   let constructomat = Constructomat (amounts ++ [liquid]) []
-      search = Search [constructomat] [] (worth prices) (map (uncurry $ mkInstruction (length amounts)) (zip [0..] plans))
+      search = mkSearch constructomat (worth prices) (parMap rpar (uncurry $ mkInstruction (length amounts)) (zip [0..] plans))
 
   print . reverse . transitions . best . iterate $ search

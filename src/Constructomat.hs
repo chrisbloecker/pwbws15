@@ -6,8 +6,8 @@ module Constructomat
 import Model as Constructomat
 --------------------------------------------------------------------------------
 
-data Constructomat = Constructomat { amounts     :: Amounts
-                                   , transitions :: [PlanId]
+data Constructomat = Constructomat { amounts     :: !Amounts
+                                   , transitions :: ![PlanId]
                                    }
   deriving (Show)
 
@@ -32,7 +32,7 @@ mkInstruction n pid (ins, outs, liquid) =
       outAmounts = counts n outs ++ [0]
       delta     = zipWith (-) outAmounts inAmounts
   in \c -> if all id (zipWith (>=) (amounts c) inAmounts)
-             then Just $ Constructomat (zipWith (+) (amounts c) delta) (transitions c ++ [pid])
+             then Just $ Constructomat (zipWith (+) (amounts c) delta) (pid:transitions c)
              else Nothing
 
 

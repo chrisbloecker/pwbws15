@@ -4,20 +4,26 @@ module Search
   where
 
 --------------------------------------------------------------------------------
-import           Prelude    hiding (iterate)
-import           Data.Maybe        (catMaybes)
-import           Data.List         ((\\), nub)
+import           Prelude                     hiding (iterate)
+import           Control.Parallel.Strategies        (parMap, rpar)
+import           Data.Foldable                      (minimumBy)
+import           Data.Ord                           (comparing)
+import           Data.Maybe                         (catMaybes)
+import           Data.List                          ((\\), nub)
 --------------------------------------------------------------------------------
 import           Constructomat
 --------------------------------------------------------------------------------
 
-data Search = Search { state        :: [Constructomat]
-                     , newStates    :: [Constructomat]
+data Search = Search { state        :: ![Constructomat]
+                     , newStates    :: ![Constructomat]
                      , value        :: Constructomat -> Price
-                     , instructions :: [Instruction]
+                     , instructions :: ![Instruction]
                      }
 
 --------------------------------------------------------------------------------
+
+mkSearch :: Constructomat -> (Constructomat -> Price) -> [Instruction] -> Search
+mkSearch c p is = Search [c] [c] p is
 
 step :: Search -> Search
 step s@Search{..} = s { state     = nub $ state ++ state'
@@ -25,7 +31,7 @@ step s@Search{..} = s { state     = nub $ state ++ state'
                       }
   where
     state' :: [Constructomat]
-    state' = nub . catMaybes $ state >>= \st -> map ($st) instructions
+    state' = nub . catMaybes . concat $ parMap rpar (\st -> map ($st) instructions) newStates
 
 
 iterate :: Search -> Search
@@ -36,10 +42,4 @@ iterate s = let s' = step s
 
 
 best :: Search -> Constructomat
-best s@Search{..} = case state of
-                      []         -> error "[ERROR] This can't happen. We always have at least one configuration, i.e. the initial configuration."
-                      (c:[])     -> c
-                      (c1:c2:cs) -> let s' = if value c1 >= value c2
-                                               then s { state = c1:cs }
-                                               else s { state = c2:cs }
-                                    in best s'
+best Search{..} = minimumBy (flip $ comparing value) state
