@@ -5,7 +5,7 @@ module Search
 
 --------------------------------------------------------------------------------
 import           Prelude                     hiding (iterate)
-import           Control.Parallel.Strategies        (parMap, rpar)
+import           Control.Parallel.Strategies        (parMap, rdeepseq)
 import           Data.Foldable                      (minimumBy)
 import           Data.Ord                           (comparing)
 import           Data.Maybe                         (catMaybes)
@@ -16,14 +16,14 @@ import           Constructomat
 
 data Search = Search { state        :: ![Constructomat]
                      , newStates    :: ![Constructomat]
-                     , value        :: Constructomat -> Price
                      , instructions :: ![Instruction]
                      }
 
 --------------------------------------------------------------------------------
 
-mkSearch :: Constructomat -> (Constructomat -> Price) -> [Instruction] -> Search
-mkSearch c p is = Search [c] [c] p is
+mkSearch :: Constructomat -> [Instruction] -> Search
+mkSearch c is = Search [c] [c] is
+
 
 step :: Search -> Search
 step s@Search{..} = s { state     = nub $ state ++ state'
@@ -31,7 +31,7 @@ step s@Search{..} = s { state     = nub $ state ++ state'
                       }
   where
     state' :: [Constructomat]
-    state' = nub . catMaybes . concat $ parMap rpar (\st -> map ($st) instructions) newStates
+    state' = nub . catMaybes . concat $ parMap rdeepseq (\st -> map ($st) instructions) newStates
 
 
 iterate :: Search -> Search
