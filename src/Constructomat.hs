@@ -2,16 +2,23 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 module Constructomat
-  (module Constructomat)
   where
 
 --------------------------------------------------------------------------------
-import Model                       as Constructomat
-import GHC.Generics                                 (Generic)
-import Control.Parallel.Strategies                  (NFData)
+import           GHC.Generics                     (Generic)
+import           Control.Parallel.Strategies      (NFData)
+import           Data.Vector.Unboxed              (Vector)
 --------------------------------------------------------------------------------
+import qualified Data.Vector.Unboxed         as V
+--------------------------------------------------------------------------------
+type Price    = Int
+type Amount   = Int
+type Plan     = ([Product], [Product], CoolingLiquid)
+type PlanId   = Int
+type Product  = Int
+type CoolingLiquid = Amount
 
-data Constructomat = Constructomat { amounts     :: !Amounts
+data Constructomat = Constructomat { amounts     :: ![Amount]
                                    , value       :: !Price
                                    , transitions :: ![PlanId]
                                    }
@@ -23,11 +30,11 @@ instance Eq Constructomat where
 instance NFData Constructomat
 
 type Instruction = Constructomat -> Maybe Constructomat
-type Eval        = Amounts -> Price
+type Eval        = [Amount] -> Price
 
 --------------------------------------------------------------------------------
 
-worth :: Prices -> (Amounts -> Price)
+worth :: [Price] -> ([Amount] -> Price)
 worth = \ps -> sum . map penalty . zipWith (*) ps
   where
     penalty :: Price -> Price
@@ -39,18 +46,18 @@ mkInstruction :: Eval -> Int -> PlanId -> Plan -> Instruction
 mkInstruction eval n pid (ins, outs, liquid) =
   let inAmounts  = counts n ins  ++ [liquid]
       outAmounts = counts n outs ++ [0]
-      delta     = zipWith (-) outAmounts inAmounts
-  in \Constructomat{..} -> if all id (zipWith (>=) amounts inAmounts)
+      delta      = zipWith (-) outAmounts inAmounts
+  in \Constructomat{..} -> if and (zipWith (>=) amounts inAmounts)
              then let amounts' = zipWith (+) amounts delta
                   in Just $ Constructomat amounts' (eval amounts') (pid:transitions)
              else Nothing
 
 
-counts :: Int -> Products -> Amounts
-counts n ps = foldr (zipWith (+)) zeros (map singleton ps)
+counts :: Int -> [Product] -> [Amount]
+counts n = foldr (zipWith (+) . singleton) zeros
   where
-    singleton :: Product -> Amounts
+    singleton :: Product -> [Amount]
     singleton p = replicate p 0 ++ [1] ++ replicate (n-p-1) 0
 
-    zeros :: Amounts
+    zeros :: [Amount]
     zeros = replicate n 0

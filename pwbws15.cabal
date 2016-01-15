@@ -18,11 +18,12 @@ cabal-version:       >=1.10
 executable pwbws15
   main-is:             Main.hs
   other-modules:       Constructomat
-                       Model
+                       Search
   -- other-extensions:
-  build-depends:       base >=4.8 && <5
-               ,       containers
-               ,       parallel
+  build-depends:       base >=4.8 && <5,
+                       containers,
+                       vector,
+                       parallel
   hs-source-dirs:      src
   default-language:    Haskell2010
   ghc-options:         -Wall -fwarn-tabs -O2 -threaded -rtsopts -with-rtsopts=-N
