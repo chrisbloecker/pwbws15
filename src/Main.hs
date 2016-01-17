@@ -4,9 +4,11 @@ module Main
 --------------------------------------------------------------------------------
 import Prelude                     hiding (iterate)
 import Control.Parallel.Strategies        (parMap, rpar)
---------------------------------------------------------------------------------
+import System.Random                      (mkStdGen)
+import Control.Monad.State                (evalState)
 import Constructomat
 import Search
+import Genetic
 --------------------------------------------------------------------------------
 
 main :: IO ()
@@ -17,8 +19,12 @@ main = do
   liquid  <- (read :: String -> Amount)   <$> getLine
 
   let amounts'      = amounts ++ [liquid]
-      eval          = worth prices
-      constructomat = Constructomat amounts' (eval amounts') []
-      search        = exhaustive constructomat (parMap rpar (uncurry $ mkInstruction eval (length amounts)) (zip [0..] plans))
+      eval'         = eval prices
+      instructions  = parMap rpar (uncurry $ mkInstruction eval' (length amounts)) (zip [0..] plans)
+      constructomat = Constructomat amounts' (eval' amounts') []
+      search        = exhaustive constructomat instructions
 
-  print . reverse . transitions $ search
+      genetic = evalState (evolve (length plans - 1) eval' (breed constructomat instructions)) (mkStdGen 42)
+
+  --print . reverse . transitions $ search
+  print genetic

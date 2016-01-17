@@ -26,12 +26,10 @@ exhaustive c is = let searchSpace = state . iterate $ Exhaustive [c] [c] is
                   in minimumBy (flip $ comparing value) searchSpace
   where
     step :: Exhaustive -> Exhaustive
-    step s@Exhaustive{..} = s { state     = nub $ state ++ state'
-                              , newStates = state' \\ state
-                              }
-      where
-        state' :: [Constructomat]
-        state' = nub . catMaybes . concat $ parMap rdeepseq (\st -> map ($st) instructions) newStates
+    step s@Exhaustive{..} = let state' = nub . catMaybes . concat $ parMap rdeepseq (\st -> map ($st) instructions) newStates
+                            in s { state     = nub $ state ++ state'
+                                 , newStates = state' \\ state
+                                 }
 
 
     iterate :: Exhaustive -> Exhaustive
@@ -41,5 +39,3 @@ exhaustive c is = let searchSpace = state . iterate $ Exhaustive [c] [c] is
                   else iterate s'
 
 --------------------------------------------------------------------------------
-
-data Tree a = Tree a [Tree a]

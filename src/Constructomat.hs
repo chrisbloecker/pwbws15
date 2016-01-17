@@ -7,9 +7,6 @@ module Constructomat
 --------------------------------------------------------------------------------
 import           GHC.Generics                     (Generic)
 import           Control.Parallel.Strategies      (NFData)
-import           Data.Vector.Unboxed              (Vector)
---------------------------------------------------------------------------------
-import qualified Data.Vector.Unboxed         as V
 --------------------------------------------------------------------------------
 type Price    = Int
 type Amount   = Int
@@ -34,8 +31,8 @@ type Eval        = [Amount] -> Price
 
 --------------------------------------------------------------------------------
 
-worth :: [Price] -> ([Amount] -> Price)
-worth = \ps -> sum . map penalty . zipWith (*) ps
+eval :: [Price] -> Eval
+eval = \ps -> sum . map penalty . zipWith (*) ps
   where
     penalty :: Price -> Price
     penalty x | x < 0     = -(x*x)
