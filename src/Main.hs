@@ -3,15 +3,17 @@ module Main
 --------------------------------------------------------------------------------
 import Prelude                     hiding (iterate)
 import Control.Parallel.Strategies        (parMap, rpar)
+import Control.Concurrent                 (forkIO, newEmptyMVar, putMVar, takeMVar)
 import System.Random                      (mkStdGen)
 import Control.Monad.State                (evalState)
-import Constructomat
-import Search
-import Genetic
+import Constructomat                      (Constructomat (..), Price, Amount, Plan, eval, mkInstruction)
+import Search                             (exhaustive)
+import Genetic                            (evolve, breed)
 --------------------------------------------------------------------------------
 
 main :: IO ()
 main = do
+  -- parse input
   prices  <- (read :: String -> [Price])  <$> getLine
   amounts <- (read :: String -> [Amount]) <$> getLine
   plans   <- (read :: String -> [Plan])   <$> getLine
@@ -22,8 +24,13 @@ main = do
       instructions  = parMap rpar (uncurry $ mkInstruction eval' (length amounts)) (zip [0..] plans)
       constructomat = Constructomat amounts' (eval' amounts') []
       search        = exhaustive constructomat instructions
+      genetic       = evalState (evolve (length plans - 1) (breed constructomat instructions)) (mkStdGen 42)
 
-      genetic = evalState (evolve (length plans - 1) (breed constructomat instructions)) (mkStdGen 42)
+  result <- newEmptyMVar
 
-  --print . reverse . transitions $ search
-  print genetic
+  -- run exhaustive search and genetic algorithm in parallel
+  _ <- forkIO $ putMVar result search
+  _ <- forkIO $ putMVar result genetic
+
+  -- and output the solution from whichever finished first
+  print =<< takeMVar result
