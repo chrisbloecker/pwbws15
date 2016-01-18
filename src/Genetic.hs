@@ -1,8 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
-
+--------------------------------------------------------------------------------
 module Genetic
   where
-
 --------------------------------------------------------------------------------
 import Control.Monad
 import Control.Monad.State

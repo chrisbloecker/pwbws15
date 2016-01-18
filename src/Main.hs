@@ -1,6 +1,5 @@
 module Main
   where
-
 --------------------------------------------------------------------------------
 import Prelude                     hiding (iterate)
 import Control.Parallel.Strategies        (parMap, rpar)
@@ -24,7 +23,7 @@ main = do
       constructomat = Constructomat amounts' (eval' amounts') []
       search        = exhaustive constructomat instructions
 
-      genetic = evalState (evolve (length plans - 1) eval' (breed constructomat instructions)) (mkStdGen 42)
+      genetic = evalState (evolve (length plans - 1) (breed constructomat instructions)) (mkStdGen 42)
 
   --print . reverse . transitions $ search
   print genetic
