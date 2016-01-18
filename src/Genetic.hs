@@ -8,8 +8,7 @@ import Control.Monad
 import Control.Monad.State
 import System.Random
 import Data.Maybe          (mapMaybe, fromJust)
-import Data.List           (maximumBy, sortOn)
-import Data.Function       (on)
+import Data.List           (sortOn)
 --------------------------------------------------------------------------------
 import Constructomat
 --------------------------------------------------------------------------------
@@ -22,9 +21,9 @@ data Population = Population { population :: ![Individuum]
   deriving (Show)
 --------------------------------------------------------------------------------
 
-evolve :: (RandomGen g) => PlanId -> Eval -> Breed -> State g Constructomat
-evolve pid eval breed = do
-  Population p _ <- mkPopulation pid >>= repeatM 30 (generation eval breed)
+evolve :: (RandomGen g) => PlanId -> Breed -> State g Constructomat
+evolve pid breed = do
+  Population p _ <- mkPopulation pid >>= repeatM 30 (theNextGeneration breed)
   return . fromJust . breed . head $ p
 
 
@@ -35,11 +34,11 @@ repeatM n f x | n == 0    = return x
   where g = f x >>= repeatM (n-1) f
 
 
-generation :: (RandomGen g) => Eval -> Breed -> Population -> State g Population
-generation eval breed p@(Population oldPopulation maxBase) = do
+theNextGeneration :: (RandomGen g) => Breed -> Population -> State g Population
+theNextGeneration breed p@(Population oldPopulation maxBase) = do
   Population mutated _ <- mutate p
   Population crossed _ <- crossover p
-  let newGeneration = take 100 . reverse . map transitions . sortOn value . mapMaybe breed $ oldPopulation ++ mutated ++ crossed
+  let newGeneration =  take 100 . reverse . map transitions . sortOn value . mapMaybe breed $ mutated ++ crossed ++ oldPopulation
   return $ Population newGeneration maxBase
 
 
@@ -67,12 +66,12 @@ mutateIndividuum pid i = state $ \gen ->
   let ps = take (length i) $ randomRs (0.0, 1.0) gen :: [Double]
       ns = randomRs (0, pid) gen :: [PlanId]
       (_, gen') = next gen
-  in (zipWith3 (\x n p -> if p > 0.9 then n else x) i ns ps, gen')
+  in (zipWith3 (\x n p -> if p > 0.85 then n else x) i ns ps, gen')
 
 
 crossover :: (RandomGen g) => Population -> State g Population
 crossover Population{..} = do
-  shuffled <- shuffle population
+  shuffled    <- shuffle population
   population' <- zipWithM crossoverPair population shuffled
   return (Population population' maxBase)
 
@@ -81,7 +80,7 @@ crossoverPair :: (RandomGen g) => Individuum -> Individuum -> State g Individuum
 crossoverPair i1 i2 = state $ \gen ->
   let (n1, gen')  = randomR (0, length i1) gen
       (n2, gen'') = randomR (0, length i2) gen'
-  in (take n1 i2 ++ drop n2 i2, gen'')
+  in (take n1 i1 ++ drop n2 i2, gen'')
 
 
 shuffle :: (RandomGen g) => [a] -> State g [a]
