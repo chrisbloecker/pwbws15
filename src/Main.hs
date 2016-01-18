@@ -29,8 +29,8 @@ main = do
   result <- newEmptyMVar
 
   -- run exhaustive search and genetic algorithm in parallel
-  _ <- forkIO $ putMVar result search
-  _ <- forkIO $ putMVar result genetic
+  _ <- forkIO $ search  `seq` putMVar result search
+  _ <- forkIO $ genetic `seq` putMVar result genetic
 
   -- and output the solution from whichever finished first
   print =<< takeMVar result

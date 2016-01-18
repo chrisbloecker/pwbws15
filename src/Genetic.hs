@@ -20,10 +20,10 @@ data Population = Population { population :: ![Individuum]
   deriving (Show)
 --------------------------------------------------------------------------------
 
-evolve :: (RandomGen g) => PlanId -> Breed -> State g Constructomat
+evolve :: (RandomGen g) => PlanId -> Breed -> State g Individuum
 evolve pid breed = do
   Population p _ <- mkPopulation pid >>= repeatM 30 (theNextGeneration breed)
-  return . fromJust . breed . head $ p
+  return . transitions . fromJust . breed . head $ p
 
 
 repeatM :: (Monad m) => Int -> (a -> m a) -> a -> m a
