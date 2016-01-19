@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 --------------------------------------------------------------------------------
 module Genetic
   where
@@ -6,23 +6,23 @@ module Genetic
 import Control.Monad
 import Control.Monad.State
 import System.Random
-import Data.Maybe          (mapMaybe, fromJust)
-import Data.List           (sortOn)
+import Data.Maybe            (mapMaybe, fromJust)
+import Data.List             (sortOn)
+import Data.Function.Memoize (deriveMemoizable)
 --------------------------------------------------------------------------------
 import Constructomat
 --------------------------------------------------------------------------------
 type Breed = Individuum -> Maybe Constructomat
-type Individuum = [PlanId]
-
-data Population = Population { population :: ![Individuum]
-                             , maxBase    :: PlanId
-                             }
-  deriving (Show)
+type Base  = PlanId
+data Individuum = Individuum { getIndividuum :: ![Base] }       deriving (Show)
+data Population = Population { getPopulation :: ![Individuum] } deriving (Show)
+--------------------------------------------------------------------------------
+deriveMemoizable ''Individuum
 --------------------------------------------------------------------------------
 
-evolve :: (RandomGen g) => PlanId -> Breed -> State g Individuum
-evolve pid breed = do
-  Population p _ <- mkPopulation pid >>= repeatM 30 (theNextGeneration breed)
+evolve :: (RandomGen g) => Base -> Breed -> State g [Base]
+evolve maxBase breed = do
+  Population p <- mkPopulation maxBase >>= repeatM 30 (theNextGeneration breed maxBase)
   return . transitions . fromJust . breed . head $ p
 
 
@@ -33,55 +33,55 @@ repeatM n f x | n == 0    = return x
   where g = f x >>= repeatM (n-1) f
 
 
-theNextGeneration :: (RandomGen g) => Breed -> Population -> State g Population
-theNextGeneration breed p@(Population oldPopulation maxBase) = do
-  Population fresh   _ <- mkPopulation maxBase
-  Population mutated _ <- mutate    p
-  Population crossed _ <- crossover p
+theNextGeneration :: (RandomGen g) => Breed -> Base -> Population -> State g Population
+theNextGeneration breed maxBase p@(Population oldPopulation) = do
+  Population fresh   <- mkPopulation maxBase
+  Population mutated <- mutate       maxBase p
+  Population crossed <- crossover            p
   --Population copied  _ <- copy      p
-  let newGeneration =  take 100 . reverse . map transitions . sortOn value . mapMaybe breed $ fresh ++ mutated ++ crossed ++ oldPopulation
-  return $ Population newGeneration maxBase
+  let newGeneration = take 100 . reverse . map (Individuum . transitions) . sortOn value . mapMaybe breed $ fresh ++ mutated ++ crossed ++ oldPopulation
+  return . Population $ newGeneration
 
 
-mkPopulation :: (RandomGen g) => PlanId -> State g Population
-mkPopulation pid = do
-  population <- replicateM 100 (mkIndividuum pid)
-  return . flip Population pid $ [] : population
+mkPopulation :: (RandomGen g) => Base -> State g Population
+mkPopulation maxBase = do
+  population <- replicateM 100 (mkIndividuum maxBase)
+  return . Population $ Individuum [] : population
 
 
-mkIndividuum :: (RandomGen g) => PlanId -> State g Individuum
-mkIndividuum pid = state $ \gen ->
+mkIndividuum :: (RandomGen g) => Base -> State g Individuum
+mkIndividuum maxBase = state $ \gen ->
   let (n, gen') = randomR (0, 10) gen
-      res       = take n $ randomRs (0, pid) gen'
-  in (res, gen')
+      res       = take n $ randomRs (0, maxBase) gen'
+  in (Individuum res, gen')
 
 
-mutate :: (RandomGen g) => Population -> State g Population
-mutate Population{..} = do
+mutate :: (RandomGen g) => Base -> Population -> State g Population
+mutate maxBase (Population population) = do
   population' <- mapM (mutateIndividuum maxBase) population
-  return (Population population' maxBase)
+  return (Population population')
 
 
-mutateIndividuum :: (RandomGen g) => PlanId -> Individuum -> State g Individuum
-mutateIndividuum pid i = state $ \gen ->
+mutateIndividuum :: (RandomGen g) => Base -> Individuum -> State g Individuum
+mutateIndividuum maxBase (Individuum i) = state $ \gen ->
   let ps = take (length i) $ randomRs (0.0, 1.0) gen :: [Double]
-      ns = randomRs (0, pid) gen :: [PlanId]
+      ns = randomRs (0, maxBase) gen :: [Base]
       (_, gen') = next gen
-  in (zipWith3 (\x n p -> if p > 0.85 then n else x) i ns ps, gen')
+  in (Individuum $ zipWith3 (\x n p -> if p > 0.85 then n else x) i ns ps, gen')
 
 
 crossover :: (RandomGen g) => Population -> State g Population
-crossover Population{..} = do
+crossover (Population population) = do
   shuffled    <- shuffle population
   population' <- zipWithM crossoverPair population shuffled
-  return (Population population' maxBase)
+  return (Population population')
 
 
 crossoverPair :: (RandomGen g) => Individuum -> Individuum -> State g Individuum
-crossoverPair i1 i2 = state $ \gen ->
+crossoverPair (Individuum i1) (Individuum i2) = state $ \gen ->
   let (n1, gen')  = randomR (0, length i1) gen
       (n2, gen'') = randomR (0, length i2) gen'
-  in (take n1 i1 ++ drop n2 i2, gen'')
+  in (Individuum $ take n1 i1 ++ drop n2 i2, gen'')
 
 
 shuffle :: (RandomGen g) => [a] -> State g [a]
@@ -94,17 +94,17 @@ shuffle l  = do
 
 
 copy :: (RandomGen g) => Population -> State g Population
-copy Population{..} = do
+copy (Population population) = do
   population' <- mapM copyIndividuum population
-  return (Population population' maxBase)
+  return (Population population')
 
 
 copyIndividuum :: (RandomGen g) => Individuum -> State g Individuum
-copyIndividuum i = state $ \gen ->
+copyIndividuum (Individuum i) = state $ \gen ->
   let (n1, gen')  = randomR (0, length i) gen
       (n2, gen'') = randomR (0, length i) gen'
-  in (take n1 i ++ drop n2 i, gen'')
+  in (Individuum $ take n1 i ++ drop n2 i, gen'')
 
 
 breed :: Constructomat -> [Instruction] -> Breed
-breed c is i = foldr ((>=>) . (is !!)) return i c
+breed c is (Individuum i) = foldr ((>=>) . (is !!)) return i c
