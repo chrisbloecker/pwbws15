@@ -4,8 +4,9 @@ module Main
 import Prelude                     hiding (iterate)
 import Control.Parallel.Strategies        (parMap, rpar)
 import Control.Concurrent                 (forkIO, newEmptyMVar, putMVar, takeMVar)
-import System.Random                      (mkStdGen)
 import Control.Monad.State                (evalState)
+import System.Random                      (mkStdGen)
+import System.IO                          (hFlush, stdout)
 import Constructomat                      (Constructomat (..), Price, Amount, Plan, eval, mkInstruction)
 import Search                             (exhaustive)
 import Genetic                            (evolve, breed)
@@ -29,8 +30,9 @@ main = do
   result <- newEmptyMVar
 
   -- run exhaustive search and genetic algorithm in parallel
-  _ <- forkIO $ search  `seq` putMVar result search
-  _ <- forkIO $ genetic `seq` putMVar result genetic
+  _ <- forkIO $ search  `seq` putMVar result search  -- >> putStrLn "Search finished"
+  _ <- forkIO $ genetic `seq` putMVar result genetic -- >> putStrLn "Genetic finished"
 
   -- and output the solution from whichever finished first
   print . reverse =<< takeMVar result
+  hFlush stdout

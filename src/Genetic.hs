@@ -35,9 +35,11 @@ repeatM n f x | n == 0    = return x
 
 theNextGeneration :: (RandomGen g) => Breed -> Population -> State g Population
 theNextGeneration breed p@(Population oldPopulation maxBase) = do
-  Population mutated _ <- mutate p
+  Population fresh   _ <- mkPopulation maxBase
+  Population mutated _ <- mutate    p
   Population crossed _ <- crossover p
-  let newGeneration =  take 100 . reverse . map transitions . sortOn value . mapMaybe breed $ mutated ++ crossed ++ oldPopulation
+  --Population copied  _ <- copy      p
+  let newGeneration =  take 100 . reverse . map transitions . sortOn value . mapMaybe breed $ fresh ++ mutated ++ crossed ++ oldPopulation
   return $ Population newGeneration maxBase
 
 
@@ -89,6 +91,19 @@ shuffle l  = do
   put gen'
   l' <- shuffle (take n l ++ drop (n+1) l)
   return (l !! n:l')
+
+
+copy :: (RandomGen g) => Population -> State g Population
+copy Population{..} = do
+  population' <- mapM copyIndividuum population
+  return (Population population' maxBase)
+
+
+copyIndividuum :: (RandomGen g) => Individuum -> State g Individuum
+copyIndividuum i = state $ \gen ->
+  let (n1, gen')  = randomR (0, length i) gen
+      (n2, gen'') = randomR (0, length i) gen'
+  in (take n1 i ++ drop n2 i, gen'')
 
 
 breed :: Constructomat -> [Instruction] -> Breed
