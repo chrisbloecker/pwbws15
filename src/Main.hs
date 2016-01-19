@@ -33,4 +33,4 @@ main = do
   _ <- forkIO $ genetic `seq` putMVar result genetic
 
   -- and output the solution from whichever finished first
-  print =<< takeMVar result
+  print . reverse =<< takeMVar result
