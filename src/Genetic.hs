@@ -6,9 +6,9 @@ module Genetic
 import Control.Monad
 import Control.Monad.State
 import System.Random
+import Data.Ord              (comparing)
 import Data.Maybe            (mapMaybe, fromJust)
-import Data.List             (sortOn)
-import Data.Function.Memoize (deriveMemoizable)
+import Data.List             (sortBy)
 --------------------------------------------------------------------------------
 import Constructomat
 --------------------------------------------------------------------------------
@@ -16,8 +16,6 @@ type Breed = Individuum -> Maybe Constructomat
 type Base  = PlanId
 data Individuum = Individuum { getIndividuum :: ![Base] }       deriving (Show)
 data Population = Population { getPopulation :: ![Individuum] } deriving (Show)
---------------------------------------------------------------------------------
-deriveMemoizable ''Individuum
 --------------------------------------------------------------------------------
 
 evolve :: (RandomGen g) => Base -> Breed -> State g [Base]
@@ -39,7 +37,7 @@ theNextGeneration breed maxBase p@(Population oldPopulation) = do
   Population mutated <- mutate       maxBase p
   Population crossed <- crossover            p
   --Population copied  _ <- copy      p
-  let newGeneration = take 100 . reverse . map (Individuum . transitions) . sortOn value . mapMaybe breed $ fresh ++ mutated ++ crossed ++ oldPopulation
+  let newGeneration = take 100 . map (Individuum . transitions) . sortBy (flip $ comparing value) . mapMaybe breed $ fresh ++ mutated ++ crossed ++ oldPopulation
   return . Population $ newGeneration
 
 
