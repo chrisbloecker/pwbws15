@@ -10,6 +10,7 @@ import System.IO                          (hFlush, stdout)
 import Constructomat                      (Constructomat (..), Price, Amount, Plan, eval, mkInstruction)
 import Search                             (exhaustive)
 import Genetic                            (evolve, breed)
+import Data.Sequence                      (empty)
 --------------------------------------------------------------------------------
 
 main :: IO ()
@@ -23,7 +24,7 @@ main = do
   let amounts'      = amounts ++ [liquid]
       eval'         = eval prices
       instructions  = parMap rpar (uncurry $ mkInstruction eval' (length amounts)) (zip [0..] plans)
-      constructomat = Constructomat amounts' (eval' amounts') []
+      constructomat = Constructomat amounts' (eval' amounts') empty
       search        = exhaustive constructomat instructions
       genetic       = evalState (evolve (length plans - 1) (breed constructomat instructions)) (mkStdGen 42)
 
@@ -34,5 +35,5 @@ main = do
   _ <- forkIO $ genetic `seq` putMVar result genetic -- >> putStrLn "Genetic finished"
 
   -- and output the solution from whichever finished first
-  print . reverse =<< takeMVar result
+  print =<< takeMVar result
   hFlush stdout

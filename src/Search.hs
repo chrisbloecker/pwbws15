@@ -19,7 +19,7 @@ data Exhaustive = Exhaustive { state        :: ![Constructomat]
 
 exhaustive :: Constructomat -> [Instruction] -> [PlanId]
 exhaustive c is = let searchSpace = state . iterate $ Exhaustive [c] [c] is
-                  in transitions $ minimumBy (flip $ comparing value) searchSpace
+                  in foldr (:) [] . transitions . minimumBy (flip $ comparing value) $ searchSpace
   where
     step :: Exhaustive -> Exhaustive
     step s@Exhaustive{..} = let state' = nub . concatMap (\st -> mapMaybe ($st) instructions) $ newStates

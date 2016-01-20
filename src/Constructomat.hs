@@ -8,6 +8,7 @@ module Constructomat
 import           GHC.Generics                     (Generic)
 import           Control.Parallel.Strategies      (NFData)
 import           System.Random
+import           Data.Sequence                    (Seq, (|>))
 --------------------------------------------------------------------------------
 type Price    = Int
 type Amount   = Int
@@ -20,7 +21,7 @@ newtype Transition = Transition { unTransition :: Int } deriving (Show, Generic,
 
 data Constructomat = Constructomat { amounts     :: ![Amount]
                                    , value       :: !Price
-                                   , transitions :: ![PlanId]
+                                   , transitions :: !(Seq PlanId)
                                    }
   deriving (Show, Generic)
 
@@ -48,7 +49,7 @@ mkInstruction eval n pid (ins, outs, liquid) =
       delta      = zipWith (-) outAmounts inAmounts
   in \Constructomat{..} -> if and (zipWith (>=) amounts inAmounts)
              then let amounts' = zipWith (+) amounts delta
-                  in Just $ Constructomat amounts' (eval amounts') (pid:transitions)
+                  in Just $ Constructomat amounts' (eval amounts') (transitions |> pid)
              else Nothing
 
 
