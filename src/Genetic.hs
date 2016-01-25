@@ -3,7 +3,7 @@
 module Genetic
   where
 --------------------------------------------------------------------------------
-import           Control.Monad               ((>=>), replicateM)
+import           Control.Monad               ((>=>), replicateM, foldM)
 import           Control.Monad.State         (State, state, get, put)
 import           System.Random               (RandomGen, randomR, randomRs, next)
 import           Data.Ord                    (comparing)
@@ -26,24 +26,17 @@ instance Monoid Population where
 
 evolve :: (RandomGen g) => Base -> Breed -> State g [Base]
 evolve maxBase breed = do
-  Population p <- mkPopulation maxBase breed 100 >>= repeatM 30 (theNextGeneration breed maxBase)
+  initial      <- mkPopulation maxBase breed 100
+  Population p <- foldM (\p _ -> theNextGeneration breed maxBase p) initial [1..50 :: Int]
   return . getIndividuum . flip index 0 $ p
-
-
-repeatM :: (Monad m) => Int -> (a -> m a) -> a -> m a
-repeatM n f x | n == 0    = return x
-              | n == 1    = f x
-              | otherwise = g
-  where g = f x >>= repeatM (n-1) f
 
 
 theNextGeneration :: (RandomGen g) => Breed -> Base -> Population -> State g Population
 theNextGeneration breed maxBase p@(Population oldPopulation) = do
-  --Population fresh   <- mkPopulation maxBase breed 100
+  Population fresh   <- mkPopulation maxBase breed 100
   Population mutated <- mutate       maxBase p
   Population crossed <- crossover            p
-  --Population copied  _ <- copy      p
-  let pool = mconcat [mutated, crossed, oldPopulation]
+  let pool = mconcat [mutated, crossed, oldPopulation, fresh]
       newGeneration = S.take 100 . fmap fst . sortBy (flip $ comparing snd) . S.filter (isJust . snd) . fmap (\i -> (i, value <$> breed i)) $ pool
   return . Population $ newGeneration
 
@@ -100,18 +93,6 @@ shuffle s | S.null s  = return s
               s' <- shuffle (S.take n s >< S.drop (n+1) s)
               return (s `index` n <| s')
 
-
-copy :: (RandomGen g) => Population -> State g Population
-copy (Population population) = do
-  population' <- mapM copyIndividuum population
-  return (Population population')
-
-
-copyIndividuum :: (RandomGen g) => Individuum -> State g Individuum
-copyIndividuum (Individuum i) = state $ \gen ->
-  let (n1, gen')  = randomR (0, length i) gen
-      (n2, gen'') = randomR (0, length i) gen'
-  in (Individuum $ take n1 i ++ drop n2 i, gen'')
 
 breed :: Constructomat -> [Instruction] -> Breed
 breed c is (Individuum i) = foldr ((>=>) . (is !!)) return i c

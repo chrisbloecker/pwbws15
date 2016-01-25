@@ -1,14 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 --------------------------------------------------------------------------------
 module Constructomat
   where
 --------------------------------------------------------------------------------
-import           GHC.Generics                     (Generic)
-import           Control.Parallel.Strategies      (NFData)
-import           System.Random
-import           Data.Sequence                    (Seq, (|>))
+import Data.Sequence (Seq, (|>))
 --------------------------------------------------------------------------------
 type Price    = Int
 type Amount   = Int
@@ -17,18 +12,15 @@ type PlanId   = Int
 type Product  = Int
 type CoolingLiquid = Amount
 
-newtype Transition = Transition { unTransition :: Int } deriving (Show, Generic, Random)
-
+newtype Transition = Transition { unTransition :: Int }
 data Constructomat = Constructomat { amounts     :: ![Amount]
                                    , value       :: !Price
                                    , transitions :: !(Seq PlanId)
                                    }
-  deriving (Show, Generic)
+  deriving (Show, Ord)
 
 instance Eq Constructomat where
   c1 == c2 = amounts c1 == amounts c2
-
-instance NFData Constructomat
 
 type Instruction = Constructomat -> Maybe Constructomat
 type Eval        = [Amount] -> Price
