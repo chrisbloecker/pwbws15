@@ -27,7 +27,7 @@ instance Monoid Population where
 evolve :: (RandomGen g) => Base -> Breed -> State g [Base]
 evolve maxBase breed = do
   initial      <- mkPopulation maxBase breed 100
-  Population p <- foldM (\p _ -> theNextGeneration breed maxBase p) initial [1..50 :: Int]
+  Population p <- foldM (\p _ -> theNextGeneration breed maxBase p) initial [1..35 :: Int]
   return . getIndividuum . flip index 0 $ p
 
 
